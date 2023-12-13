@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Task Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+</head>
+
+<body class="bg-gray-100 font-sans">
+    <div class="flex h-screen">
+        <aside class="w-64 bg-white shadow-md">
+            <div class="p-4">
+                <h1 class="text-2xl font-semibold mb-4">Categories</h1>
+                <ul id="categoryList">
+                </ul>
+                <div class="mt-4">
+                    <button id="createCategoryBtn"
+                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-md focus:outline-none">
+                        +
+                    </button>
+                </div>
+                <div id="addCategoryForm" style="display: none;">
+                    <h2 class="text-lg font-semibold mt-4 mb-2">Add New Category</h2>
+                    <form id="newCategoryForm">
+                        <input type="text" id="categoryName" placeholder="Enter category name"
+                            class="rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="submit"
+                            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-md mt-2 focus:outline-none">
+                            Add Category
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <script>
+                function reloadCategories(){
+                    $.ajax({
+                        url: 'http://localhost:8080/categories',
+                        type: 'GET',
+                        success: function (categories) {
+                            var categoryList = $('#categoryList');
+                            categoryList.empty();
+                            var select = $('#categorySelect');
+                            select.empty();
+
+                            categories.forEach(function (category) {
+                                var listItem = $('<li>').addClass('mb-2');
+                                var link = $('<a>').attr('href', '#')
+                                    .addClass('text-gray-700 hover:text-blue-500')
+                                    .text(category.name);
+                                listItem.append(link);
+                                categoryList.append(listItem);
+
+                                select.append($('<option>').val(category.id).text(category.name));
+                            });
+                        },
+                        error: function (xhr, status, error) {
+                            console.error(error);
+                        }
+                    });
+                }
+
+                $(document).ready(function () {
+                    $('#createCategoryBtn').click(function () {
+                        $('#addCategoryForm').toggle();
+                    });
+                    $('#newCategoryForm').submit(function (event) {
+                        event.preventDefault();
+
+                        var categoryName = $('#categoryName').val();
+
+                        $.ajax({
+                            url: 'http://localhost:8080/categories',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ name: categoryName }),
+                            success: function (response) {
+                                console.log('New category added:', response);
+                                $('#categoryName').val('');
+                                $('#addCategoryForm').hide();
+                                reloadCategories();
+                            },
+                            error: function (xhr, status, error) {
+                                console.error(error);
+                            }
+                        });
+                    });
+                    reloadCategories();
+
+                    $('#createCategoryBtn').click(function () {
+                        console.log('Create New Category clicked');
+                    });
+
+                    $('#addTaskForm').submit(function (event) {
+                        event.preventDefault();
+
+                        var categoryId = $('#categorySelect').val();
+                        var taskDetails = $('#taskDetails').val();
+
+                        var newTask = {
+                            title: taskDetails
+                        };
+
+                        $.ajax({
+                            url: 'http://localhost:8080/tasks/' + categoryId,
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(newTask),
+                            success: function (response) {
+                                console.log('New task added:', response);
+                                reloadTasks();
+                                $('#taskDetails').val('');
+                                Swal.fire({
+                                    position: "top-center",
+                                    icon: "success",
+                                    title: "Thêm mới thành công",
+                                    showConfirmButton: false,
+                                    timer: 1500
+                                });
+                            },
+                            error: function (xhr, status, error) {
+                                console.error(error);
+                            }
+                        });
+                    });
+                });
+            </script>
+        </aside>
+
+        <main class="flex-1 p-8">
+            <h1 class="text-3xl font-semibold mb-6">Tasks</h1>
+
+            <div class="mt-8">
+                <h2 class="text-lg font-semibold mb-3">Add New Task</h2>
+                <form class="flex items-center" id="addTaskForm">
+                    <select id="categorySelect"
+                        class="rounded-l-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </select>
+                    <input type="text" id="taskDetails" placeholder="Enter task details"
+                        class="flex-1 rounded-none px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit"
+                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-r-md focus:outline-none">
+                        Add
+                    </button>
+                </form>
+            </div>
+
+            <div class="mt-8">
+                <h2 class="text-lg font-semibold mb-3">Tasks List</h2>
+                <table class="w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2">Title</th>
+                            <th class="border border-gray-300 px-4 py-2">Status</th>
+                            <th class="border border-gray-300 px-4 py-2">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskList">
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+    <script>
+        function reloadTasks() {
+            $.ajax({
+                url: 'http://localhost:8080/tasks',
+                type: 'GET',
+                success: function (tasks) {
+                    var taskList = $('#taskList');
+                    taskList.empty();
+                    tasks.forEach(function (task) {
+                        var taskRow = $('<tr>');
+                        var titleCell = $('<td>').text(task.title).addClass('border border-gray-300 px-4 py-2');
+                        var statusCell = $('<td>').text(task.status === "TODO" ? "🔴" : task.status === "IN_PROGRESS" ? "🟡" : "🟢").addClass('border border-gray-300 px-4 py-2 text-center');
+                        var actionCell = $('<td>').addClass('border border-gray-300 px-4 py-2 text-center');
+
+                        var resetButton = $('<button>').text('Reset!').addClass('bg-red-500 hover:bg-red-600 text-white font-semibold mr-2 px-4 py-1 rounded focus:outline-none');
+                        var doItButton = $('<button>').text('Do it!').addClass('bg-yellow-500 hover:bg-yellow-600 text-white font-semibold mr-2 px-4 py-1 rounded focus:outline-none');
+                        var doneItButton = $('<button>').text('Done it!').addClass('bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-1 rounded focus:outline-none');
+
+                        actionCell.append(resetButton, doItButton, doneItButton);
+                        taskRow.append(titleCell, statusCell, actionCell);
+                        taskList.append(taskRow);
+
+                        taskRow.data('taskId', task.id);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            reloadTasks();
+
+            $('#taskList').on('click', 'button', function () {
+                var action = $(this).text().trim().toLowerCase();
+                var taskId = $(this).closest('tr').data('taskId');
+
+                var status = {
+                    'reset!': 'TODO',
+                    'do it!': 'IN_PROGRESS',
+                    'done it!': 'DONE'
+                }[action];
+
+                $.ajax({
+                    url: 'http://localhost:8080/tasks/' + taskId + '/status/' + status,
+                    type: 'PUT',
+                    success: function (response) {
+                        console.log('Task status changed:', response);
+                        reloadTasks();
+                        Swal.fire({
+                            position: "top-center",
+                            icon: "success",
+                            title: "Thay đổi trạng thái thành công",
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            });
+
+        });
+    </script>
+</body>
+
+</html>

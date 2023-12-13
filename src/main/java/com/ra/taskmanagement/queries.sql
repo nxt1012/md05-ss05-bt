@@ -1,0 +1,3 @@
+drop database if exists md05_ss05_task_management;
+create database md05_ss05_task_management;
+use md05_ss05_task_management
